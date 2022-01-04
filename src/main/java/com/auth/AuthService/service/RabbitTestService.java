@@ -14,7 +14,7 @@ import java.util.concurrent.TimeoutException;
 @Service
 public class RabbitTestService {
 
-    public void sendMsg() throws NoSuchAlgorithmException, KeyManagementException, IOException, TimeoutException {
+    public static void sendMsg() throws NoSuchAlgorithmException, KeyManagementException, IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
 
         factory.setUsername("KrzychuDzik");
@@ -27,8 +27,8 @@ public class RabbitTestService {
         Connection connection = factory.newConnection();
         Channel channel = connection.createChannel();
 
-        byte[] message = "random msg".getBytes();
-        channel.basicPublish("FirstExchange", "FirstQueue",
+        byte[] message = "123".getBytes();
+        channel.basicPublish("FirstExchange", "SecondQueue",
                 new AMQP.BasicProperties().builder()
                         .contentType("text/plain")
                         .userId("KrzychuDzik")
