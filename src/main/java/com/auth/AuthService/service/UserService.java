@@ -3,41 +3,45 @@ package com.auth.AuthService.service;
 import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBMapper;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBQueryExpression;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBScanExpression;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.dynamodbv2.document.Item;
 import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.document.spec.GetItemSpec;
 import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.memorydb.model.UserAlreadyExistsException;
+import com.auth.AuthService.DTO.UserDTO;
 import com.auth.AuthService.domain.UserData;
+import com.auth.AuthService.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
-public class RegisterService {
+public class UserService implements IUserService {
 
-    public void registerUser (UserData userData) {
-        AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard()
-                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("http://localhost:8000", "us-east-2"))
-                .build();
+    @Autowired
+    UserRepository userRepository;
+
+    public UserData registerUser (UserDTO userDTO) {
+
+        if (userRepository.emailExist(userDTO.getEmail())){
+            throw new UserAlreadyExistsException("Konto z adreesem " + userDTO.getEmail() + " juz istnieje");
+        }
 
         UUID uuid = UUID.randomUUID();
-        String tableName = "Users";
+        UserData user = UserData.builder()
+                .id(uuid.toString())
+                .email(userDTO.getEmail())
+                .login(userDTO.getLogin())
+                .password(userDTO.getPassword()).build();
 
-        Map<String,AttributeValue> attributeValues = new HashMap<>();
-        attributeValues.put("id", new AttributeValue().withS(String.valueOf(uuid)));
-        attributeValues.put("login", new AttributeValue().withS(userData.getLogin()));
-        attributeValues.put("email", new AttributeValue().withS(userData.getMail()));
-        attributeValues.put("password", new AttributeValue().withS(userData.getPassword()));
+        userRepository.save(user);
 
-        PutItemRequest putItemRequest = new PutItemRequest()
-                .withTableName(tableName)
-                .withItem(attributeValues);
-
-        PutItemResult putItemResult = client.putItem(putItemRequest);
+        return user;
     }
 
     public void test() {
@@ -51,10 +55,10 @@ public class RegisterService {
 
         try {
             Table table = dynamoDB.createTable(tableName,
-                    Arrays.asList(new KeySchemaElement("login", KeyType.HASH),
-                            new KeySchemaElement("password", KeyType.RANGE)),
-                    Arrays.asList(new AttributeDefinition("login", ScalarAttributeType.S),
-                            new AttributeDefinition("password", ScalarAttributeType.S)),
+                    Arrays.asList(new KeySchemaElement("id", KeyType.HASH),
+                            new KeySchemaElement("email", KeyType.RANGE)),
+                    Arrays.asList(new AttributeDefinition("id", ScalarAttributeType.S),
+                            new AttributeDefinition("email", ScalarAttributeType.S)),
                     new ProvisionedThroughput(10L, 10L));
             table.waitForActive();
         }
@@ -82,7 +86,7 @@ public class RegisterService {
             Item outcome = table.getItem(spec);
 
             userData.setId(outcome.getString("id"));
-            userData.setMail(outcome.getString("email"));
+            userData.setEmail(outcome.getString("email"));
 
             System.out.println(userData.toString());
 
