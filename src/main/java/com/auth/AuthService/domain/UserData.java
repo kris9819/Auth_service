@@ -10,15 +10,17 @@ public class UserData {
     private String login;
     private String email;
     private String password;
+    private boolean enabled;
 
     public UserData() {
     }
 
-    public UserData(String id, String login, String email, String password) {
+    public UserData(String id, String login, String email, String password, boolean enabled) {
         this.id = id;
         this.login = login;
         this.email = email;
         this.password = password;
+        this.enabled = enabled;
     }
 
     @DynamoDBHashKey(attributeName = "id")
@@ -57,5 +59,14 @@ public class UserData {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    @DynamoDBAttribute(attributeName = "enabled")
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }
