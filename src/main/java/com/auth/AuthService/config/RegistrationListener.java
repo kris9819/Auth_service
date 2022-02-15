@@ -1,6 +1,7 @@
 package com.auth.AuthService.config;
 
 import com.auth.AuthService.domain.UserData;
+import com.auth.AuthService.repository.TokenRepository;
 import com.auth.AuthService.util.OnRegistrationCompleteEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
@@ -14,25 +15,24 @@ import java.util.UUID;
 @Component
 public class RegistrationListener implements ApplicationListener<OnRegistrationCompleteEvent> {
 
-//    @Autowired
-//    stworzyc repository tokenow
+    @Autowired
+    TokenRepository tokenRepository;
 
     @Autowired
     MessageSource messageSource;
 
     @Autowired
     JavaMailSender javaMailSender;
-    //ustawic konfiguracje w pliku properties
 
     @Override
     public void onApplicationEvent(OnRegistrationCompleteEvent event) {
-
+        sendActivateLink(event);
     }
 
     private void sendActivateLink(OnRegistrationCompleteEvent event) {
         final UserData user = event.getUserData();
         final String token = UUID.randomUUID().toString();
-        //utworzyc token w bazie
+        tokenRepository.createToken(user.getId(), token);
 
         final SimpleMailMessage email = constructEmailMessage(event, user, token);
         javaMailSender.send(email);
@@ -41,7 +41,7 @@ public class RegistrationListener implements ApplicationListener<OnRegistrationC
     private SimpleMailMessage constructEmailMessage(final OnRegistrationCompleteEvent event, final UserData user, final String token) {
         final String recipientAddress = user.getEmail();
         final String subject = "Potwierdzenie rejestracji";
-        final String confirmationUrl = event.getAppUrl() + "/registrationConfirm.html?token=" + token;
+        final String confirmationUrl = event.getAppUrl() + "/registrationConfirm?token=" + token;
         final String message = messageSource.getMessage("message.regSuccLink", null, "Prosze kliknac w ponizszy link, aby potwierdzic rejestracje", event.getLocale());
         final SimpleMailMessage email = new SimpleMailMessage();
         email.setTo(recipientAddress);

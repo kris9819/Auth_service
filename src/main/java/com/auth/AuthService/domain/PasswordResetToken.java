@@ -10,8 +10,8 @@ import java.util.Date;
 
 @NoArgsConstructor
 @AllArgsConstructor
-@DynamoDBTable(tableName = "Tokens")
-public class VerificationToken {
+@DynamoDBTable(tableName = "PasswordResetTokens")
+public class PasswordResetToken {
     public static final int EXPIRATION = 60 * 24;
 
     private String Id;
@@ -19,7 +19,7 @@ public class VerificationToken {
     private String userUUID;
     private Date expiryDate;
 
-    public VerificationToken(String token, String userUUID) {
+    public PasswordResetToken(String token, String userUUID) {
         this.token = token;
         this.userUUID = userUUID;
         this.expiryDate = calculateExpiryDate(EXPIRATION);
@@ -36,7 +36,7 @@ public class VerificationToken {
     }
 
     @DynamoDBAttribute
-    @DynamoDBRangeKey(attributeName = "validationToken")
+    @DynamoDBRangeKey(attributeName = "passwordResetToken")
     public String getToken() {
         return token;
     }
@@ -68,10 +68,5 @@ public class VerificationToken {
         calendar.setTime(new Timestamp(calendar.getTime().getTime()));
         calendar.add(Calendar.MINUTE, expTime);
         return new Date(calendar.getTime().getTime());
-    }
-
-    public void updateToken(final String token) {
-        this.token = token;
-        this.expiryDate = calculateExpiryDate(EXPIRATION);
     }
 }

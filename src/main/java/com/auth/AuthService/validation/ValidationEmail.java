@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ValidatorEmail.class)
 public @interface ValidationEmail {
-    String message() default "Niepoprawny adrees e-mail";
+    String message() default "Niepoprawny adres e-mail";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

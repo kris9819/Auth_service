@@ -1,5 +1,6 @@
 package com.auth.AuthService.DTO;
 
+import com.auth.AuthService.validation.ValildationPassword;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -11,15 +12,21 @@ import javax.validation.constraints.NotNull;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class LoginDTO {
+public class PasswordDTO {
 
     @NotNull
     @NotEmpty
-    @JsonProperty("email")
-    private String email;
+    @JsonProperty("oldPassword")
+    private String oldPassword;
 
     @NotNull
     @NotEmpty
-    @JsonProperty("password")
-    private String password;
+    @JsonProperty("token")
+    private String token;
+
+    @NotNull
+    @NotEmpty
+    @JsonProperty("newPassword")
+    @ValildationPassword
+    private String newPassword;
 }

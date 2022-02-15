@@ -18,23 +18,23 @@ import javax.validation.constraints.NotNull;
 public class UserDTO {
     @NotNull
     @NotEmpty
-    @JsonProperty("login")
+    @JsonProperty("Login")
     private String login;
 
     @NotNull
     @NotEmpty
-    @JsonProperty("email")
+    @JsonProperty("Email")
     @ValidationEmail
     private String email;
 
     @NotNull
     @NotEmpty
-    @JsonProperty("password")
+    @JsonProperty("Password")
     @ValildationPassword
     private String password;
 
     @NotNull
     @NotEmpty
-    @JsonProperty("repeatPassword")
+    @JsonProperty("RepeatPassword")
     private String repeatPassword;
 }
