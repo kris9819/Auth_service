@@ -75,6 +75,7 @@
         </plugins>
 	</build>
 
+<!--	TODO all dependency version should go here-->
 	<properties>
 		<java.version>11</java.version>
 	</properties>
