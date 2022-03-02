@@ -10,24 +10,23 @@ import com.amazonaws.services.memorydb.model.UserAlreadyExistsException;
 import com.auth.AuthService.DTO.UserDTO;
 import com.auth.AuthService.domain.BookList;
 import com.auth.AuthService.domain.PasswordResetToken;
-import com.auth.AuthService.domain.UserBooks;
 import com.auth.AuthService.domain.UserData;
+import com.auth.AuthService.domain.VerificationToken;
 import com.auth.AuthService.repository.PasswordResetTokenRepository;
 import com.auth.AuthService.repository.UserBooksRepository;
 import com.auth.AuthService.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.context.MessageSource;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -44,6 +43,9 @@ public class UserService implements IUserService {
 
     @Autowired
     UserBooksRepository userBooksRepository;
+
+    @Autowired
+    MessageSource messageSource;
 
     public UserData registerUser (UserDTO userDTO) {
 
@@ -191,6 +193,41 @@ public class UserService implements IUserService {
         return userBooksRepository.getUserBooksArray(getLoggedUserId());
     }
 
+    public SimpleMailMessage createRegistrationMessage(Locale locale, VerificationToken token, HttpServletRequest request) {
+        UserData user = findUserByUUID(token.getToken());
+        String appUrl = "http://" + request.getServerName() +
+                ":" + request.getServerPort() +
+                request.getContextPath();
+        final String recipientAddress = user.getEmail();
+        final String subject = "Reset hasła";
+        final String confirmationUrl = appUrl + "/validatePasswordResetToken?token=" + token;
+        final String message = messageSource.getMessage("message.ResendToken", null, "Prosze kliknac w ponizszy link, aby potwierdzic rejestracje", locale);
+        final SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(recipientAddress);
+        email.setSubject(subject);
+        email.setText(message + " \r\n" + confirmationUrl);
+        email.setFrom("KrisLibraryApp");
+        return email;
+    }
+
+    public SimpleMailMessage createResetPasswordMessage(Locale locale, UserData user, HttpServletRequest request) {
+        String token = UUID.randomUUID().toString();
+        passwordResetTokenRepository.createToken(user.getId(), token);
+        String appUrl = "http://" + request.getServerName() +
+                ":" + request.getServerPort() +
+                request.getContextPath();
+        final String recipientAddress = user.getEmail();
+        final String subject = "Reset hasła";
+        final String confirmationUrl = appUrl + "/validatePasswordResetToken?token=" + token;
+        final String message = messageSource.getMessage("message.ResendToken", null, "Prosze kliknac w ponizszy link, aby potwierdzic rejestracje", locale);
+        final SimpleMailMessage email = new SimpleMailMessage();
+        email.setTo(recipientAddress);
+        email.setSubject(subject);
+        email.setText(message + " \r\n" + confirmationUrl);
+        email.setFrom("KrisLibraryApp");
+        return email;
+    }
+
     private String getLoggedUserId() {
         String username;
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -212,4 +249,6 @@ public class UserService implements IUserService {
         final Calendar cal = Calendar.getInstance();
         return passToken.getExpiryDate().before(cal.getTime());
     }
+
+
 }

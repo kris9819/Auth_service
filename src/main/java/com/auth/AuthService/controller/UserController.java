@@ -4,7 +4,10 @@ import com.amazonaws.services.memorydb.model.UserAlreadyExistsException;
 import com.auth.AuthService.DTO.LoginDTO;
 import com.auth.AuthService.DTO.PasswordDTO;
 import com.auth.AuthService.DTO.UserDTO;
-import com.auth.AuthService.domain.*;
+import com.auth.AuthService.domain.BookList;
+import com.auth.AuthService.domain.PasswordResetToken;
+import com.auth.AuthService.domain.UserData;
+import com.auth.AuthService.domain.VerificationToken;
 import com.auth.AuthService.repository.PasswordResetTokenRepository;
 import com.auth.AuthService.repository.TokenRepository;
 import com.auth.AuthService.service.UserService;
@@ -22,9 +25,7 @@ import org.springframework.web.context.request.WebRequest;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.Calendar;
-import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 @RestController
 public class UserController {
@@ -46,20 +47,6 @@ public class UserController {
 
     @Autowired
     MessageSource messageSource;
-
-    @PostMapping("/register")
-    public GenericResponse registerUser(@Valid @RequestBody final UserDTO userDTO,
-                                        HttpServletRequest request) {
-        try {
-            UserData user = userService.registerUser(userDTO);
-            String appUrl = request.getContextPath();
-            eventPublisher.publishEvent(new OnRegistrationCompleteEvent(appUrl, request.getLocale(), user));
-
-        } catch (UserAlreadyExistsException exception) {
-            return new GenericResponse("Uzytkownik o takim emailu juz istnieje");
-        }
-        return new GenericResponse("Success");
-    }
 
     @GetMapping("/registrationConfirm")
     public GenericResponse confirmRegistratrion(WebRequest request, @RequestParam("token") String token) {
@@ -88,19 +75,31 @@ public class UserController {
     public GenericResponse resendRegistrationToken(HttpServletRequest request,
                                                    @RequestParam("token") String existingToken) {
         VerificationToken token = tokenRepository.genNewToken(existingToken);
-
-        UserData user = userService.findUserByUUID(token.getUserUUID());
-        String appUrl = "http://" + request.getServerName() +
-                ":" + request.getServerPort() +
-                request.getContextPath();
-        SimpleMailMessage simpleMailMessage  = constructResendVerificationTokenEmail(appUrl, request.getLocale(), token, user);
+        SimpleMailMessage simpleMailMessage  = userService.createRegistrationMessage(request.getLocale(), token, request);
         javaMailSender.send(simpleMailMessage);
 
         return new GenericResponse("Token wyslany ponownie");
     }
 
-    @PostMapping("/login")
-    public void login(@RequestBody LoginDTO loginDTO) {
+    @GetMapping("/validatePasswordResetToken")
+    public boolean validatePasswordResetToken(Locale locale, @RequestParam("token") String token) {
+        String result = userService.validatePasswordResetToken(token);
+        if(result == null) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @GetMapping("/addUserBook")
+    public GenericResponse addUserBook(@RequestParam("bookId") Integer bookId) {
+        userService.addUserBook(bookId);
+        return new GenericResponse("Success");
+    }
+
+    @GetMapping("/getUserBooks")
+    public BookList getUserBooks() {
+        return userService.getUserBooks();
     }
 
     @GetMapping("/create")
@@ -123,30 +122,21 @@ public class UserController {
         userService.createUserBooksTable();
     }
 
-    @PostMapping("/resetPassword")
-    public GenericResponse resetPassword(HttpServletRequest request,
-                                         @RequestParam("email") String userEmail) {
-        UserData user = userService.findByEmail(userEmail);
-        if (user == null) {
-            throw new UserNotFoundException();
-        }
-        String token = UUID.randomUUID().toString();
-        passwordResetTokenRepository.createToken(user.getId(), token);
-        String appUrl = "http://" + request.getServerName() +
-                ":" + request.getServerPort() +
-                request.getContextPath();
-        javaMailSender.send(constructPasswordTokenEmail(appUrl, request.getLocale(), token, user));
-        return new GenericResponse("Email wyslany");
+    @PostMapping("/login")
+    public void login(@RequestBody LoginDTO loginDTO) {
     }
 
-    @GetMapping("/validatePasswordResetToken")
-    public boolean validatePasswordResetToken(Locale locale, @RequestParam("token") String token) {
-        String result = userService.validatePasswordResetToken(token);
-        if(result == null) {
-            return true;
-        } else {
-            return false;
+    @PostMapping("/register")
+    public GenericResponse registerUser(@Valid @RequestBody final UserDTO userDTO,
+                                        HttpServletRequest request) {
+        try {
+            UserData user = userService.registerUser(userDTO);
+            String appUrl = request.getContextPath();
+            eventPublisher.publishEvent(new OnRegistrationCompleteEvent(appUrl, request.getLocale(), user));
+        } catch (UserAlreadyExistsException exception) {
+            return new GenericResponse("Uzytkownik o takim emailu juz istnieje");
         }
+        return new GenericResponse("Success");
     }
 
     @PostMapping("/savePassword")
@@ -167,42 +157,14 @@ public class UserController {
         }
     }
 
-    @GetMapping("/addUserBook")
-    public GenericResponse addUserBook(@RequestParam("bookId") Integer bookId) {
-        userService.addUserBook(bookId);
-        return new GenericResponse("Success");
-    }
-
-    @GetMapping("/getUserBooks")
-    public BookList getUserBooks() {
-        return userService.getUserBooks();
-    }
-
-    private SimpleMailMessage constructResendVerificationTokenEmail
-            (String contextPath, Locale locale, VerificationToken newToken, UserData user) {
-        final String recipientAddress = user.getEmail();
-        final String subject = "Ponowne potwierdzenie rejestracji";
-        final String confirmationUrl = contextPath + "/registrationConfirm?token=" + newToken.getToken();
-        final String message = messageSource.getMessage("message.ResendToken", null, "Prosze kliknac w ponizszy link, aby potwierdzic rejestracje", locale);
-        final SimpleMailMessage email = new SimpleMailMessage();
-        email.setTo(recipientAddress);
-        email.setSubject(subject);
-        email.setText(message + " \r\n" + confirmationUrl);
-        email.setFrom("KrisLibraryApp");
-        return email;
-    }
-
-    private SimpleMailMessage constructPasswordTokenEmail
-            (String contextPath, Locale locale, String token, UserData user) {
-        final String recipientAddress = user.getEmail();
-        final String subject = "Reset hasła";
-        final String confirmationUrl = contextPath + "/validatePasswordResetToken?token=" + token;
-        final String message = messageSource.getMessage("message.ResendToken", null, "Prosze kliknac w ponizszy link, aby potwierdzic rejestracje", locale);
-        final SimpleMailMessage email = new SimpleMailMessage();
-        email.setTo(recipientAddress);
-        email.setSubject(subject);
-        email.setText(message + " \r\n" + confirmationUrl);
-        email.setFrom("KrisLibraryApp");
-        return email;
+    @PostMapping("/resetPassword")
+    public GenericResponse resetPassword(HttpServletRequest request,
+                                         @RequestParam("email") String userEmail) {
+        UserData user = userService.findByEmail(userEmail);
+        if (user == null) {
+            throw new UserNotFoundException();
+        }
+        javaMailSender.send(userService.createResetPasswordMessage(request.getLocale(), user, request));
+        return new GenericResponse("Email wyslany");
     }
 }
