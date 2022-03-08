@@ -14,8 +14,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.hamcrest.Matchers.contains;
-
 @SpringBootTest
 class AuthServiceApplicationTests {
 
@@ -23,8 +21,8 @@ class AuthServiceApplicationTests {
 	void contextLoads() throws NoSuchAlgorithmException, KeyManagementException, IOException, TimeoutException, InterruptedException {
 		ConnectionFactory factory = new ConnectionFactory();
 
-		factory.setUsername("KrzychuDzik");
-		factory.setPassword("TestPasswd123");
+		factory.setUsername("***");
+		factory.setPassword("***");
 
 		factory.setHost("b-c2d9196a-9a6a-492e-97e2-6fa4a8194d98.mq.us-east-2.amazonaws.com");
 		factory.setPort(5671);
@@ -37,13 +35,13 @@ class AuthServiceApplicationTests {
 		channel.basicPublish("FirstExchange", "FirstQueue",
 				new AMQP.BasicProperties().builder()
 						.contentType("text/plain")
-						.userId("KrzychuDzik")
+						.userId("***")
 						.build(),
 				message);
 
 		List<String> messages = new ArrayList<>();
 
-		channel.basicConsume("FirstQueue", false, "KrzychuDzik",
+		channel.basicConsume("FirstQueue", false, "***",
 				new DefaultConsumer(channel) {
 					@Override
 					public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
